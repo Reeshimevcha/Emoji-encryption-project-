@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EmojiChat — Encrypted Private Messaging</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SCANLINE OVERLAY -->
+<div class="scanlines" aria-hidden="true"></div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 1 — LANDING
+══════════════════════════════════════════════ -->
+<div id="screen-landing" class="screen active">
+
+  <!-- HUD corner decorations -->
+  <div class="hud-corner tl"></div>
+  <div class="hud-corner tr"></div>
+  <div class="hud-corner bl"></div>
+  <div class="hud-corner br"></div>
+
+  <!-- Floating particles -->
+  <div class="particles" aria-hidden="true">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
+
+  <div class="landing-wrap">
+
+    <!-- Logo -->
+    <div class="logo">
+      <div class="logo-orb">
+        <div class="orb-ring r1"></div>
+        <div class="orb-ring r2"></div>
+        <div class="orb-core">🔐</div>
+      </div>
+      <h1 class="logo-title">EMOJI<span>CHAT</span></h1>
+      <p class="logo-tagline">AES-256 · Rotating Cipher · Ephemeral</p>
+    </div>
+
+    <!-- Card -->
+    <div class="card">
+      <div class="card-glow"></div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" id="tab-create" onclick="document.getElementById('btn-create-tab').click()">CREATE</button>
+        <button class="tab" id="tab-join" onclick="document.getElementById('btn-join-tab').click()">JOIN</button>
+      </div>
+      <!-- Hidden triggers for app.js -->
+      <button id="btn-create-tab" style="display:none"></button>
+      <button id="btn-join-tab" style="display:none"></button>
+
+      <!-- CREATE PANEL ─────────────────────────── -->
+      <div id="panel-create">
+
+        <!-- Name -->
+        <div class="field">
+          <label class="flabel">CODENAME</label>
+          <input class="finput" id="username-create" type="text" placeholder="Enter your alias" maxlength="20" autocomplete="off">
+        </div>
+
+        <!-- Room type selection -->
+        <div class="field">
+          <label class="flabel">ROOM TYPE</label>
+          <div class="type-cards">
+            <div class="type-card selected" data-type="duo">
+              <div class="type-icon">⚡</div>
+              <div class="type-name">DUO</div>
+              <div class="type-desc">Private 1-on-1</div>
+            </div>
+            <div class="type-card" data-type="group">
+              <div class="type-icon">👥</div>
+              <div class="type-name">GROUP</div>
+              <div class="type-desc">Multi-user room</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Group options -->
+        <div id="group-options" class="hidden">
+          <div class="field">
+            <label class="flabel">MAX USERS</label>
+            <div class="max-users-row">
+              <label class="checkbox-row">
+                <input type="checkbox" id="max-unlimited" checked>
+                <span class="cb-box"></span>
+                <span class="cb-label">Unlimited</span>
+              </label>
+              <div id="max-users-row" class="hidden" style="display:flex;align-items:center;gap:10px;margin-top:8px">
+                <input class="finput num-input" id="max-users-val" type="number" min="2" max="100" value="10" style="width:80px">
+                <span style="color:var(--text2);font-size:12px">users max</span>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="info-box">
+              <span>🔒</span>
+              <span>New users join in <strong>encrypted view</strong> — only emojis visible. You control who can read messages via the Permissions panel.</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-create">
+          <span class="btn-icon">✦</span>
+          INITIALIZE SECURE ROOM
+        </button>
+
+      </div>
+
+      <!-- JOIN PANEL ──────────────────────────── -->
+      <div id="panel-join" class="hidden">
+
+        <div class="field">
+          <label class="flabel">CODENAME</label>
+          <input class="finput" id="username-join" type="text" placeholder="Enter your alias" maxlength="20" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label class="flabel">ROOM CODE</label>
+          <input class="finput code-input" id="room-code-input" type="text"
+                 placeholder="X7KQ2M" maxlength="6" autocomplete="off"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+
+        <div class="info-box" style="margin-bottom:16px">
+          <span>ℹ️</span>
+          <span>You'll join in encrypted view. The room owner can grant you read access.</span>
+        </div>
+
+        <button class="btn-primary" id="btn-join">
+          <span class="btn-icon">🚀</span>
+          ENTER SECURE ROOM
+        </button>
+
+      </div>
+
+    </div><!-- /card -->
+
+    <!-- Stats bar -->
+    <div class="stat-bar">
+      <span>🛡 AES-256-GCM</span>
+      <span class="dot">·</span>
+      <span>🔄 Rotating Cipher</span>
+      <span class="dot">·</span>
+      <span>💣 Self-Destruct</span>
+      <span class="dot">·</span>
+      <span>👁 Zero Logs</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 2 — CHAT
+══════════════════════════════════════════════ -->
+<div id="screen-chat" class="screen">
+
+  <!-- ── SIDEBAR ────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <div class="sb-logo">EMOJI<span>CHAT</span></div>
+      <button class="room-pill" id="btn-copy-code" title="Copy room code">
+        <div>
+          <div class="rp-label">ROOM CODE</div>
+          <div class="rp-code" id="room-code-display">——</div>
+        </div>
+        <span class="rp-copy">📋</span>
+      </button>
+    </div>
+
+    <!-- Status badges -->
+    <div class="sb-badges">
+      <span class="badge badge-enc">🔒 E2E</span>
+      <span class="badge badge-type" id="room-type-badge">⚡ DUO</span>
+    </div>
+
+    <!-- Users -->
+    <div class="sb-section">
+      <div class="sb-section-title">USERS <span class="pill-count" id="online-count">0</span></div>
+      <ul id="users-list"></ul>
+    </div>
+
+    <!-- Permissions panel (owner) -->
+    <div class="sb-section hidden" id="permissions-panel">
+      <div class="sb-section-title">PERMISSIONS</div>
+      <div id="permissions-list" class="perm-list">
+        <div style="color:var(--text3);font-size:11px;padding:8px 0">Waiting for users to join…</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="sb-section">
+      <div class="sb-section-title">SETTINGS</div>
+      <div class="toggle-row">
+        <span class="tlabel">Auto-reveal messages</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-reveal">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="enc-status">
+        <div class="enc-dot"></div>
+        <span>Rotating cipher active</span>
+      </div>
+    </div>
+
+    <div class="sb-footer">
+      <button class="btn-perm hidden" id="btn-permissions">🛡 Permissions</button>
+      <button class="btn-leave" id="btn-leave">↩ Leave Room</button>
+      <button class="btn-danger hidden" id="btn-close-room">☠ Close &amp; Purge</button>
+    </div>
+  </aside>
+
+  <!-- ── MAIN CHAT ──────────────────────────────── -->
+  <main class="chat-main">
+
+    <!-- Header -->
+    <div class="chat-head">
+      <div class="ch-left">
+        <span class="ch-label">SECURE CHANNEL</span>
+        <span class="ch-code" id="chat-room-code">——</span>
+      </div>
+      <div class="ch-right">
+        <div class="signal-bar"><span></span><span></span><span></span><span></span></div>
+        <span class="enc-badge">🔒 AES-256</span>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages-list">
+      <div class="empty-state">
+        <div class="empty-orb">🔐</div>
+        <div class="empty-title">CHANNEL SECURE</div>
+        <div class="empty-sub">Share the room code to connect.<br>All messages encrypt as rotating emojis.</div>
+      </div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area">
+
+      <!-- File preview -->
+      <div id="file-preview" class="hidden fp-bar">
+        <span>📎</span>
+        <span id="fp-name" class="fp-name">file</span>
+        <span id="fp-size" class="fp-size">0 KB</span>
+        <button id="btn-clear-file" class="fp-clear">✕</button>
+      </div>
+
+      <!-- Active schedule indicator -->
+      <div id="active-schedule" class="hidden sched-active-bar">
+        <span>⏰</span>
+        <span id="schedule-label">Scheduled</span>
+        <button id="btn-clear-sched" class="fp-clear">✕</button>
+      </div>
+
+      <!-- Schedule picker (hidden) -->
+      <div id="schedule-panel" class="hidden sched-panel">
+        <div class="sp-title">⏰ SCHEDULE MESSAGE</div>
+        <input class="finput" id="schedule-dt" type="datetime-local">
+        <button class="btn-apply-sched" id="btn-apply-sched">Set Schedule</button>
+      </div>
+
+      <!-- Input row -->
+      <div class="input-row">
+        <textarea id="msg-input" rows="1"
+          placeholder="Type encrypted message…  (Enter ↵ to send)"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'">
+        </textarea>
+        <div class="ia-actions">
+          <button class="ia-btn" id="btn-attach" title="Attach file">📎</button>
+          <input type="file" id="file-input" style="display:none">
+          <button class="ia-btn" id="btn-schedule" title="Schedule message">⏰</button>
+          <select id="destruct-select" class="destruct-sel" title="Self-destruct timer">
+            <option value="0">⏱ No timer</option>
+            <option value="10">💣 10 sec</option>
+            <option value="30">💣 30 sec</option>
+            <option value="60">💣 1 min</option>
+            <option value="300">💣 5 min</option>
+            <option value="3600">💣 1 hr</option>
+          </select>
+          <button id="btn-send" class="send-btn" title="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="input-hint">🔐 Messages encrypt with AES-256 · Cipher rotates per message · Click 👁 Reveal to decode</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/cipher.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
