@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoidChat — Encrypted Secure Messaging</title>
+  <meta name="description" content="Military-grade AES-256 encrypted chat. Messages appear as emojis. No logs. No trace.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="scanlines" aria-hidden="true"></div>
+<div class="noise" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════
+     LANDING SCREEN
+═══════════════════════════════════════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="particles" aria-hidden="true">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+  </div>
+  <div class="hc tl"></div><div class="hc tr"></div>
+  <div class="hc bl"></div><div class="hc br"></div>
+
+  <div class="land-wrap">
+
+    <!-- Logo -->
+    <div class="logo">
+      <div class="logo-orb">
+        <div class="orb-r r1"></div>
+        <div class="orb-r r2"></div>
+        <div class="orb-r r3"></div>
+        <div class="orb-core">🔐</div>
+      </div>
+      <div class="logo-text">VOID<span>CHAT</span></div>
+      <div class="logo-sub">[ AES-256-GCM · ROTATING CIPHER · ZERO TRACE ]</div>
+    </div>
+
+    <!-- Card -->
+    <div class="land-card">
+      <div class="card-header-line"></div>
+      <div class="card-corner-tl"></div>
+      <div class="card-corner-br"></div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" id="tab-create-btn">▶ INITIALIZE</button>
+        <button class="tab" id="tab-join-btn">▶ CONNECT</button>
+      </div>
+
+      <!-- CREATE PANEL -->
+      <div id="panel-create">
+        <div class="field">
+          <label class="fl">// OPERATOR CODENAME</label>
+          <input class="fi" id="username-create" type="text" placeholder="Enter alias..." maxlength="20" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="fl">// CHANNEL TYPE</label>
+          <div class="type-cards">
+            <div class="type-card selected" data-type="duo">
+              <div class="tc-icon">⚡</div>
+              <div class="tc-name">DUO</div>
+              <div class="tc-sub">1-on-1 / Max 2</div>
+            </div>
+            <div class="type-card" data-type="group">
+              <div class="tc-icon">◈</div>
+              <div class="tc-name">GROUP</div>
+              <div class="tc-sub">Multi-operator</div>
+            </div>
+          </div>
+        </div>
+        <div id="group-options" class="hidden">
+          <div class="field">
+            <label class="fl">// MAX OPERATORS</label>
+            <div>
+              <label class="cb-row">
+                <input type="checkbox" id="max-unlimited" checked>
+                <span class="cb-box"></span>
+                <span class="cb-lbl">Unlimited</span>
+              </label>
+              <div id="max-users-wrap" class="hidden" style="margin-top:8px">
+                <input class="fi num-fi" id="max-users-val" type="number" min="2" max="100" value="10">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="fl">// SESSION DURATION</label>
+          <select class="fi fi-sel" id="session-duration">
+            <option value="0">∞ Permanent</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="360">6 hours</option>
+            <option value="1440">24 hours</option>
+          </select>
+        </div>
+        <div class="info-box">
+          <span class="ib-icon">⚠</span>
+          <span>New users join in ENCRYPTED mode. Use Permissions panel to grant read access per-user. Each user controls who can read their own messages.</span>
+        </div>
+        <button class="btn-prim" id="btn-create">
+          <span>▶▶</span> INITIALIZE SECURE CHANNEL
+        </button>
+      </div>
+
+      <!-- JOIN PANEL -->
+      <div id="panel-join" class="hidden">
+        <div class="field">
+          <label class="fl">// OPERATOR CODENAME</label>
+          <input class="fi" id="username-join" type="text" placeholder="Enter alias..." maxlength="20" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="fl">// CHANNEL ACCESS CODE</label>
+          <input class="fi code-fi" id="room-code-join" type="text" placeholder="X7KQ2M" maxlength="6" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="info-box">
+          <span class="ib-icon">ℹ</span>
+          <span>You will join in ENCRYPTED view. Messages appear as emojis until the room owner grants you read access.</span>
+        </div>
+        <button class="btn-prim" id="btn-join">
+          <span>▶▶</span> CONNECT TO CHANNEL
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-row">
+      <span>🛡 AES-256-GCM</span><span class="sdot">◆</span>
+      <span>🔄 ROTATING CIPHER</span><span class="sdot">◆</span>
+      <span>💣 SELF-DESTRUCT</span><span class="sdot">◆</span>
+      <span>👁 ZERO LOGS</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     CHAT SCREEN
+═══════════════════════════════════════════ -->
+<div id="screen-chat" class="screen">
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+  <!-- ── SIDEBAR ─────────────────────────────── -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sb-head">
+      <div class="sb-logo">VOID<span>CHAT</span></div>
+      <button class="sb-close" onclick="closeSidebar()">✕</button>
+    </div>
+
+    <button class="room-pill" id="btn-copy-code">
+      <div>
+        <div class="rp-lbl">// CHANNEL</div>
+        <div class="rp-code" id="sidebar-room-code">——</div>
+      </div>
+      <span class="rp-cp">📋</span>
+    </button>
+
+    <div class="sb-badges">
+      <span class="badge b-enc">🔒 E2E</span>
+      <span class="badge b-type" id="room-type-badge">⚡ DUO</span>
+    </div>
+
+    <!-- Session timer -->
+    <div id="session-timer-wrap" class="hidden session-timer-wrap">
+      <div class="st-label">// SESSION EXPIRES IN</div>
+      <div class="st-val" id="session-countdown">—</div>
+    </div>
+
+    <!-- Users -->
+    <div class="sb-sect">
+      <div class="sb-sect-title">// OPERATORS <span class="pill-n" id="online-count">0</span></div>
+      <ul id="users-list"></ul>
+    </div>
+
+    <!-- Owner Permissions -->
+    <div id="owner-perm-panel" class="hidden sb-sect">
+      <div class="sb-sect-title">// ACCESS CONTROL</div>
+      <div class="perm-subhead">Toggle per-operator access:</div>
+      <div id="owner-perm-list" class="perm-list"></div>
+    </div>
+
+    <!-- My Privacy -->
+    <div id="my-privacy-panel" class="hidden sb-sect">
+      <div class="sb-sect-title">// MY MESSAGE PRIVACY</div>
+      <div class="perm-subhead">Who can read YOUR messages:</div>
+      <div id="my-privacy-list" class="perm-list"></div>
+    </div>
+
+    <!-- Settings -->
+    <div class="sb-sect">
+      <div class="sb-sect-title">// SETTINGS</div>
+      <div class="toggle-row">
+        <span class="tlabel">Auto-reveal messages</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-reveal">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="enc-status">
+        <div class="enc-dot"></div>
+        <span>ROTATING CIPHER ACTIVE</span>
+      </div>
+    </div>
+
+    <div class="sb-footer">
+      <button class="btn-perm hidden" id="btn-permissions">🛡 ACCESS CONTROL</button>
+      <button class="btn-privacy hidden" id="btn-my-privacy">👁 MY PRIVACY</button>
+      <button class="btn-download hidden" id="btn-download-chat">⬇ DOWNLOAD CHAT</button>
+      <button class="btn-leave" id="btn-leave">↩ DISCONNECT</button>
+      <button class="btn-purge hidden" id="btn-close-room">☠ CLOSE &amp; PURGE</button>
+    </div>
+  </aside>
+
+  <!-- ── MAIN CHAT ──────────────────────────── -->
+  <main class="chat-main">
+
+    <!-- Header -->
+    <div class="chat-head">
+      <button class="btn-hamburger" id="btn-hamburger" title="Menu">☰</button>
+      <div class="ch-info">
+        <span class="ch-lbl">SECURE CHANNEL</span>
+        <span class="ch-code" id="chat-room-code">——</span>
+      </div>
+      <div class="ch-right">
+        <div class="sig-bars"><span></span><span></span><span></span><span></span></div>
+        <span class="enc-pill">🔒 AES-256</span>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages-list">
+      <div class="empty-state">
+        <div class="es-icon">🔐</div>
+        <div class="es-title">CHANNEL SECURE</div>
+        <div class="es-sub">Share your room code to connect.<br>All transmissions encrypted with rotating emoji cipher.</div>
+        <div class="es-code">echo "AWAITING TRANSMISSION..."</div>
+      </div>
+    </div>
+
+    <!-- Hold-to-send popup -->
+    <div id="send-options-popup" class="hidden sop">
+      <div class="sop-title">// SEND OPTIONS</div>
+      <div class="sop-field">
+        <label class="fl">SCHEDULE TRANSMISSION</label>
+        <input class="fi" id="sched-dt" type="datetime-local">
+      </div>
+      <div class="sop-field">
+        <label class="fl">SELF-DESTRUCT TIMER</label>
+        <select class="fi fi-sel" id="destruct-opts">
+          <option value="0">None</option>
+          <option value="10">10 seconds</option>
+          <option value="30">30 seconds</option>
+          <option value="60">1 minute</option>
+          <option value="300">5 minutes</option>
+          <option value="3600">1 hour</option>
+        </select>
+      </div>
+      <div class="sop-btns">
+        <button class="sop-apply" id="btn-apply-opts">✓ APPLY</button>
+        <button class="sop-clear" id="btn-clear-opts">✕ CLEAR</button>
+        <button class="sop-cancel" id="btn-cancel-opts">CANCEL</button>
+      </div>
+    </div>
+
+    <!-- Input area -->
+    <div class="input-area">
+      <!-- File preview -->
+      <div id="file-preview" class="hidden fp-bar">
+        <span>📎</span>
+        <span id="fp-name" class="fp-nm">file</span>
+        <span id="fp-size" class="fp-sz">0</span>
+        <button id="btn-clear-file" class="fp-x">✕</button>
+      </div>
+
+      <!-- Active options indicators -->
+      <div class="opts-indicators">
+        <span id="sched-indicator" class="hidden opt-tag sched-tag">⏰ —</span>
+        <span id="destruct-indicator" class="hidden opt-tag dest-tag">💣 —</span>
+      </div>
+
+      <div class="input-row">
+        <button class="ia-btn" id="btn-attach" title="Attach file">📎</button>
+        <input type="file" id="file-input" style="display:none">
+        <textarea id="msg-input" rows="1"
+          placeholder="TYPE ENCRYPTED MESSAGE... (ENTER ↵ TO SEND / HOLD ● TO OPTIONS)"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'">
+        </textarea>
+        <button id="btn-send" class="send-btn" title="Send (hold 1s for options)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+
+      <div class="input-hint">🔐 AES-256 ENCRYPTED · ROTATING CIPHER PER MESSAGE · HOLD ● 1s FOR OPTIONS</div>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="cipher.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
