@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>VoidChat — Encrypted Secure Messaging</title>
+  <meta name="description" content="AES-256 encrypted chat. Messages appear as emojis. No logs. No trace.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<!-- ══════════════════════════════════════
+     LANDING
+══════════════════════════════════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="particles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="hc tl"></div><div class="hc tr"></div>
+  <div class="hc bl"></div><div class="hc br"></div>
+
+  <div class="land-wrap">
+
+    <div class="logo">
+      <div class="logo-orb">
+        <div class="orb-r r1"></div>
+        <div class="orb-r r2"></div>
+        <div class="orb-core">🔐</div>
+      </div>
+      <div class="logo-text">VOID<span>CHAT</span></div>
+      <div class="logo-sub">AES-256-GCM · ROTATING CIPHER · ZERO TRACE</div>
+    </div>
+
+    <div class="land-card">
+      <div class="card-line-top"></div>
+
+      <div class="tabs">
+        <button class="tab active" id="tab-create-btn">INITIALIZE</button>
+        <button class="tab" id="tab-join-btn">CONNECT</button>
+      </div>
+
+      <!-- CREATE -->
+      <div id="panel-create">
+        <div class="field">
+          <label class="fl">OPERATOR CODENAME</label>
+          <input class="fi" id="username-create" type="text" placeholder="Enter alias..." maxlength="20" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="fl">CHANNEL TYPE</label>
+          <div class="type-cards">
+            <div class="type-card selected" data-type="duo">
+              <div class="tc-icon">⚡</div>
+              <div class="tc-name">DUO</div>
+              <div class="tc-sub">1-on-1 · Max 2</div>
+            </div>
+            <div class="type-card" data-type="group">
+              <div class="tc-icon">◈</div>
+              <div class="tc-name">GROUP</div>
+              <div class="tc-sub">Multi-operator</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="group-options" class="hidden">
+          <div class="field">
+            <label class="fl">MAX OPERATORS</label>
+            <label class="cb-row">
+              <input type="checkbox" id="max-unlimited" checked>
+              <span class="cb-box"></span>
+              <span class="cb-lbl">Unlimited</span>
+            </label>
+            <div id="max-users-wrap" class="hidden" style="margin-top:10px">
+              <input class="fi" id="max-users-val" type="number" min="2" max="100" value="10" style="width:100px">
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="fl">SESSION DURATION</label>
+          <select class="fi fi-sel" id="session-duration">
+            <option value="0">∞ Permanent</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="360">6 hours</option>
+            <option value="1440">24 hours</option>
+          </select>
+        </div>
+
+        <div class="info-box">
+          <span class="ib-icon">⚠</span>
+          <span>New users join encrypted. Use Permissions panel to grant access. Each user controls who reads their messages.</span>
+        </div>
+
+        <button class="btn-prim" id="btn-create">▶ INITIALIZE SECURE CHANNEL</button>
+      </div>
+
+      <!-- JOIN -->
+      <div id="panel-join" class="hidden">
+        <div class="field">
+          <label class="fl">OPERATOR CODENAME</label>
+          <input class="fi" id="username-join" type="text" placeholder="Enter alias..." maxlength="20" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="fl">CHANNEL ACCESS CODE</label>
+          <input class="fi code-fi" id="room-code-join" type="text" placeholder="X7KQ2M" maxlength="6" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="info-box">
+          <span class="ib-icon">ℹ</span>
+          <span>You will join encrypted. Messages appear as emojis until the owner grants read access.</span>
+        </div>
+        <button class="btn-prim" id="btn-join">▶ CONNECT TO CHANNEL</button>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <span>🛡 AES-256</span><span class="sdot">·</span>
+      <span>🔄 ROTATING CIPHER</span><span class="sdot">·</span>
+      <span>💣 SELF-DESTRUCT</span><span class="sdot">·</span>
+      <span>👁 ZERO LOGS</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     CHAT SCREEN
+══════════════════════════════════════ -->
+<div id="screen-chat" class="screen">
+
+  <div id="sidebar-overlay" class="sb-overlay"></div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sb-head">
+      <div class="sb-logo">VOID<span>CHAT</span></div>
+      <button class="sb-x" onclick="closeSidebar()">✕</button>
+    </div>
+
+    <button class="room-pill" id="btn-copy-code">
+      <div>
+        <div class="rp-lbl">CHANNEL CODE</div>
+        <div class="rp-code" id="sidebar-room-code">——</div>
+      </div>
+      <span>📋</span>
+    </button>
+
+    <div class="sb-badges">
+      <span class="badge b-enc">🔒 E2E ENCRYPTED</span>
+      <span class="badge b-type" id="room-type-badge">⚡ DUO</span>
+    </div>
+
+    <!-- Session timer -->
+    <div id="session-timer-wrap" class="hidden st-wrap">
+      <div class="st-lbl">SESSION EXPIRES</div>
+      <div class="st-val" id="session-countdown">—</div>
+    </div>
+
+    <!-- Users -->
+    <div class="sb-sect">
+      <div class="sb-stitle">OPERATORS <span class="pill-n" id="online-count">0</span></div>
+      <ul id="users-list"></ul>
+    </div>
+
+    <!-- Owner permissions -->
+    <div id="owner-perm-panel" class="hidden sb-sect">
+      <div class="sb-stitle">ACCESS CONTROL</div>
+      <p class="perm-sub">Toggle per-operator access:</p>
+      <div id="owner-perm-list" class="perm-list"></div>
+    </div>
+
+    <!-- My privacy -->
+    <div id="my-privacy-panel" class="hidden sb-sect">
+      <div class="sb-stitle">MY MESSAGE PRIVACY</div>
+      <p class="perm-sub">Who can read your messages:</p>
+      <div id="my-privacy-list" class="perm-list"></div>
+    </div>
+
+    <!-- Settings -->
+    <div class="sb-sect">
+      <div class="sb-stitle">SETTINGS</div>
+      <div class="toggle-row">
+        <span class="tlabel">Auto-reveal messages</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-reveal">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="enc-status">
+        <div class="enc-dot"></div>
+        ROTATING CIPHER ACTIVE
+      </div>
+    </div>
+
+    <div class="sb-footer">
+      <button class="sbf-btn btn-perm hidden" id="btn-permissions">🛡 ACCESS CONTROL</button>
+      <button class="sbf-btn btn-privacy hidden" id="btn-my-privacy">👁 MY PRIVACY</button>
+      <button class="sbf-btn btn-dl hidden" id="btn-download-chat">⬇ DOWNLOAD CHAT</button>
+      <button class="sbf-btn btn-leave" id="btn-leave">↩ DISCONNECT</button>
+      <button class="sbf-btn btn-purge hidden" id="btn-close-room">☠ CLOSE &amp; PURGE</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CHAT -->
+  <main class="chat-main">
+
+    <!-- Header -->
+    <header class="chat-head">
+      <button class="btn-hamburger" id="btn-hamburger">☰</button>
+      <div class="ch-center">
+        <span class="ch-lbl">SECURE CHANNEL</span>
+        <span class="ch-code" id="chat-room-code">——</span>
+      </div>
+      <div class="ch-right">
+        <div class="sig-bars"><span></span><span></span><span></span><span></span></div>
+        <span class="enc-pill">🔒 AES-256</span>
+      </div>
+    </header>
+
+    <!-- Messages -->
+    <div id="messages-list">
+      <div class="empty-state">
+        <div class="es-icon">🔐</div>
+        <div class="es-title">CHANNEL SECURE</div>
+        <div class="es-sub">Share your room code to connect.<br>All messages encrypted with rotating emoji cipher.</div>
+      </div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area">
+
+      <!-- File preview bar -->
+      <div id="file-preview" class="hidden fp-bar">
+        <span>📎</span>
+        <span id="fp-name" class="fp-nm">file</span>
+        <span id="fp-size" class="fp-sz">0</span>
+        <button id="btn-clear-file" class="fp-x">✕</button>
+      </div>
+
+      <!-- Schedule panel (popup above) -->
+      <div id="schedule-panel" class="hidden input-popup">
+        <div class="popup-title">⏰ SCHEDULE TRANSMISSION</div>
+        <input class="fi" id="sched-dt" type="datetime-local">
+        <div class="popup-btns">
+          <button class="pop-apply" id="btn-apply-schedule">✓ SET</button>
+          <button class="pop-cancel" onclick="closeAllPanels()">✕ CANCEL</button>
+        </div>
+      </div>
+
+      <!-- Destruct panel (popup above) -->
+      <div id="destruct-panel" class="hidden input-popup">
+        <div class="popup-title">💣 SELF-DESTRUCT TIMER</div>
+        <select class="fi fi-sel" id="destruct-sel">
+          <option value="0">No timer</option>
+          <option value="10">10 seconds</option>
+          <option value="30">30 seconds</option>
+          <option value="60">1 minute</option>
+          <option value="300">5 minutes</option>
+          <option value="3600">1 hour</option>
+        </select>
+        <div class="popup-btns">
+          <button class="pop-apply" id="btn-apply-destruct">✓ SET</button>
+          <button class="pop-cancel" onclick="closeAllPanels()">✕ CANCEL</button>
+        </div>
+      </div>
+
+      <!-- Main input row -->
+      <div class="input-row input-panel-area">
+        <button class="ia-btn" id="btn-attach" title="Attach file">📎</button>
+        <input type="file" id="file-input" style="display:none">
+        <button class="ia-btn" id="btn-schedule" title="Schedule message">⏰</button>
+        <button class="ia-btn" id="btn-destruct" title="Self-destruct timer">💣</button>
+        <textarea id="msg-input" rows="1"
+          placeholder="Type encrypted message… (Enter to send)"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'">
+        </textarea>
+        <button id="btn-send" class="send-btn" title="Send message">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+
+      <div class="input-hint">🔐 ENCRYPTED · HOLD TIMER BUTTONS FOR OPTIONS</div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="cipher.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
