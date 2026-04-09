@@ -69,19 +69,18 @@ function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.class
 document.addEventListener('DOMContentLoaded',async()=>{
   initLanding(); initChat(); initEmojiPicker(); initAttachMenu(); initVoiceNote();
 
-  // ── Anonymous Auth (required for secure Firebase rules) ──────────────────
-  try {
-    let user = firebase.auth().currentUser;
-    if (!user) {
-      const cred = await firebase.auth().signInAnonymously();
-      user = cred.user;
-    }
-    // Use Firebase Auth UID so security rules work correctly
-    S.uid = user.uid;
-    localStorage.setItem('vc_uid', S.uid);
-  } catch(e) {
-    console.warn('Anonymous auth failed, using local UID:', e.message);
-  }
+  // ── Anonymous Auth — waits until Firebase confirms auth state ────────────
+  await new Promise(resolve => {
+    const unsub = firebase.auth().onAuthStateChanged(async user => {
+      unsub();
+      if (!user) {
+        try { const c = await firebase.auth().signInAnonymously(); user = c.user; }
+        catch(e) { console.warn('Auth failed:', e.message); }
+      }
+      if (user) { S.uid = user.uid; localStorage.setItem('vc_uid', S.uid); }
+      resolve();
+    });
+  });
 
   await tryRestore();
 });
@@ -124,10 +123,6 @@ function switchTab(t){
 async function handleCreate(){
   const name=$('username-create').value.trim();
   if(!name){toast('Enter codename','error');return;}
-  // Wait for auth before doing anything
-  if(!firebase.auth().currentUser){
-    try{ const c=await firebase.auth().signInAnonymously(); S.uid=c.user.uid; }catch(e){}
-  } else { S.uid=firebase.auth().currentUser.uid; }
   const tc=document.querySelector('.type-card.selected');
   const type=tc?tc.dataset.type:'duo';
   const maxUsers=type==='group'?($('max-unlimited').checked?0:parseInt($('max-users-val').value)||0):2;
