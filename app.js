@@ -124,6 +124,10 @@ function switchTab(t){
 async function handleCreate(){
   const name=$('username-create').value.trim();
   if(!name){toast('Enter codename','error');return;}
+  // Wait for auth before doing anything
+  if(!firebase.auth().currentUser){
+    try{ const c=await firebase.auth().signInAnonymously(); S.uid=c.user.uid; }catch(e){}
+  } else { S.uid=firebase.auth().currentUser.uid; }
   const tc=document.querySelector('.type-card.selected');
   const type=tc?tc.dataset.type:'duo';
   const maxUsers=type==='group'?($('max-unlimited').checked?0:parseInt($('max-users-val').value)||0):2;
