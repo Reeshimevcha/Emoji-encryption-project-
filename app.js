@@ -34,10 +34,9 @@ const S = {
   // New state
   pinnedMsgId:null,
   replyTo:null,            // {id, fromName, preview}
-  canaryMsgId:null,
-  canaryAuthorized:null,   // Set of uids authorized to read canary
   searchOpen:false,
   msgCache:{},             // id→{fromName,plainText} for search
+  userNames:{},            // uid→name for receipt display
 };
 localStorage.setItem('vc_uid', S.uid);
 
@@ -156,7 +155,6 @@ function enterChat(){
   $('room-type-badge').textContent=S.type==='duo'?'⚡ DUO':'◈ GROUP';
   $('btn-permissions').classList.toggle('hidden', !(S.isOwner&&S.type==='group'));
   $('btn-close-room').classList.toggle('hidden',!S.isOwner);
-  $('btn-plant-canary').classList.toggle('hidden',!S.isOwner);
   listenRoom();
   if(S.roomExpires) startSessTimer();
 }
@@ -167,10 +165,16 @@ function listenRoom(){
   const uL=uRef.on('value',snap=>{
     const users=snap.val()||{};
     renderUsers(users);
+    // Keep uid→name map for receipt tooltips
+    for(const[uid,u]of Object.entries(users)){if(u&&u.name)S.userNames[uid]=u.name;}
     const me=users[S.uid];
     if(me){
       S.canDownload=!!me.canDownload||S.isOwner;
-      S.myVisibleTo=me.myVisibleTo||null;
+      // Normalize myVisibleTo: Firebase returns object when array was stored
+      const mv=me.myVisibleTo;
+      if(mv===null||mv===undefined) S.myVisibleTo=null;
+      else if(Array.isArray(mv)) S.myVisibleTo=mv;
+      else S.myVisibleTo=Object.values(mv);
       $('btn-download-chat').classList.toggle('hidden',!S.canDownload);
     }
     if(S.isOwner&&S.type==='group') renderOwnerPerms(users);
@@ -180,18 +184,16 @@ function listenRoom(){
   const mAdd=mRef.orderByChild('timestamp').on('child_added',snap=>{
     const d=snap.val(); if(!d)return;
     renderMessage(snap.key,d); markDelivered(snap.key,d);
-    // Canary check: if we're the owner and this message's readBy changes
-    if(S.isOwner && snap.key===S.canaryMsgId) listenCanaryReads(snap.key);
   });
   const mChg=mRef.on('child_changed',snap=>{
     const d=snap.val(); if(!d)return;
     updateReceipts(snap.key,d); updateReactions(snap.key,d); updatePollUI(snap.key,d);
     updateChecklistUI(snap.key,d);
-    if(S.isOwner && snap.key===S.canaryMsgId) checkCanaryReads(snap.key,d);
+    // Re-check visibility in case visibleTo changed after render
+    updateMsgVisibility(snap.key,d);
   });
   const mDel=mRef.on('child_removed',snap=>{
     removeMsgUI(snap.key);
-    if(snap.key===S.canaryMsgId){ S.canaryMsgId=null; $('canary-status').classList.add('hidden'); }
     if(snap.key===S.pinnedMsgId) clearPinnedBar();
   });
   const sRef=root.child('scheduled');
@@ -296,16 +298,20 @@ async function kickUser(uid,name){
 // ── My Privacy ─────────────────────────────────────────────────────────────
 function renderMyPrivacy(users){
   const p=$('my-privacy-list'); if(!p)return; p.innerHTML='';
+  // Normalize myVisibleTo (Firebase may return object instead of array)
+  let visArr=S.myVisibleTo;
+  if(visArr!==null&&!Array.isArray(visArr)) visArr=Object.values(visArr||{});
   for(const[uid,u]of Object.entries(users)){
     if(!u||uid===S.uid)continue;
-    const allowed=S.myVisibleTo===null||(Array.isArray(S.myVisibleTo)&&S.myVisibleTo.includes(uid));
+    const allowed=S.myVisibleTo===null||(Array.isArray(visArr)&&visArr.includes(uid));
     const row=ce('div'); row.className='perm-row';
     const bg=avatarBg(u.name||'?');
     row.innerHTML=`
       <div class="pa" style="background:${bg}">${avatarLetter(u.name||'?')}</div>
       <div class="pm">
         <span class="pn">${esc(u.name||'?')}</span>
-        <span class="ps ${u.online?'online':'offline'}">${u.online?'● ONLINE':'○ OFFLINE'}</span>
+        <span class="ps ${u.online?'online':'offline'}">${u.online?'\u25CF ONLINE':'\u25CB OFFLINE'}</span>
+        <span class="ps" style="color:${allowed?'#00ff41':'#ff4444'};font-size:9px">${allowed?'\u2713 CAN READ':'\uD83D\uDD12 ENCRYPTED'}</span>
       </div>
       <label class="toggle-switch">
         <input type="checkbox" ${allowed?'checked':''} onchange="toggleMyVis('${uid}',this.checked)">
@@ -313,29 +319,43 @@ function renderMyPrivacy(users){
       </label>`;
     p.appendChild(row);
   }
-  if(!p.children.length) p.innerHTML='<div class="perm-empty">No other users yet…</div>';
+  if(!p.children.length) p.innerHTML='<div class="perm-empty">No other users yet\u2026</div>';
 }
 async function toggleMyVis(uid,allow){
-  const snap=await db.ref(`rooms/${S.room}/users/${S.uid}/myVisibleTo`).once('value');
-  let list=snap.val();
-  if(list===null){
-    const us=await db.ref(`rooms/${S.room}/users`).once('value');
-    list=Object.keys(us.val()||{}).filter(k=>k!==S.uid);
-  }
-  if(!Array.isArray(list)) list=[];
-  if(allow){if(!list.includes(uid))list.push(uid);}
-  else{list=list.filter(k=>k!==uid);}
+  // Get all other users in the room
   const us=await db.ref(`rooms/${S.room}/users`).once('value');
-  const all=Object.keys(us.val()||{}).filter(k=>k!==S.uid);
-  const isAll=all.every(k=>list.includes(k));
-  S.myVisibleTo=isAll?null:list;
-  await db.ref(`rooms/${S.room}/users/${S.uid}/myVisibleTo`).set(isAll?null:list);
-  toast(allow?'Now visible to user':'Hidden from user','info');
+  const allOthers=Object.keys(us.val()||{}).filter(k=>k!==S.uid);
+
+  // Normalize current state: null=everyone, object/array=restricted list
+  let current=S.myVisibleTo;
+  if(current===null){
+    current=[...allOthers]; // expand to explicit full list
+  } else if(!Array.isArray(current)){
+    current=Object.values(current); // Firebase may return object
+  } else {
+    current=[...current];
+  }
+
+  if(allow){
+    if(!current.includes(uid)) current.push(uid);
+  } else {
+    current=current.filter(k=>k!==uid);
+  }
+
+  // If list equals everyone, store null (visible to all)
+  const isAll=allOthers.length>0&&allOthers.every(k=>current.includes(k));
+  const newVal=isAll?null:current;
+  S.myVisibleTo=newVal;
+  await db.ref(`rooms/${S.room}/users/${S.uid}/myVisibleTo`).set(newVal);
+  toast(allow?'\u2713 Now visible to user':'\uD83D\uDD12 Hidden from user \u2014 new messages encrypted for them','info');
 }
 
 function canView(data){
   if(data.from===S.uid) return true;
-  if(data.visibleTo && !data.visibleTo.includes(S.uid)) return false;
+  if(!data.visibleTo) return true; // null means visible to all
+  // Firebase may return array or object; normalize to array
+  const list=Array.isArray(data.visibleTo)?data.visibleTo:Object.values(data.visibleTo);
+  if(!list.includes(S.uid)) return false;
   return true;
 }
 
@@ -537,6 +557,35 @@ function updateChecklistUI(id,data){
   const old=wrap.querySelector('.checklist-msg');
   if(old){const tmp=ce('div');tmp.innerHTML=buildChecklistMsg(id,data);old.replaceWith(tmp.firstChild);}
 }
+function updateMsgVisibility(id,data){
+  if(data.from===S.uid)return; // own messages always visible
+  const wrap=document.getElementById(`msg-${id}`); if(!wrap)return;
+  const nowCanSee=canView(data);
+  const body=wrap.querySelector('.msg-content');
+  if(!body)return;
+  const wasEncOnly=body.classList.contains('msg-encrypted-only');
+  if(wasEncOnly&&nowCanSee){
+    // Was hidden, now allowed — re-render the message body
+    const bodyWrap=wrap.querySelector('.mb');
+    if(bodyWrap){
+      const isMine=data.from===S.uid;
+      const newBody=buildMessageBody(id,data,isMine,true);
+      // Replace content area (keep timerBar, footer etc.)
+      const oldContent=bodyWrap.querySelector('.msg-content');
+      const oldBtn=bodyWrap.querySelector('.btn-reveal');
+      if(oldContent){const tmp=ce('div');tmp.innerHTML=newBody;oldContent.replaceWith(tmp.firstChild||oldContent);}
+      if(oldBtn)oldBtn.remove();
+      autoRevealMessage(id,data);
+    }
+  } else if(!wasEncOnly&&!nowCanSee&&body.dataset.state==='encrypted'){
+    // Was visible, now restricted — show encrypted only
+    if(data.content) body.innerHTML=EmojiCipher.shortDisplay(data.content);
+    body.classList.add('msg-encrypted-only');
+    const btn=body.nextElementSibling;
+    if(btn&&btn.classList.contains('btn-reveal'))btn.remove();
+  }
+}
+
 
 // ── Location & Contact ─────────────────────────────────────────────────────
 function shareLocation(){
@@ -628,7 +677,6 @@ function renderMessage(id,data){
   const timerBar=data.expiresAt?`<div class="destruct-bar" style="--dur:${Math.max(0,data.expiresAt-Date.now())}ms"></div>`:'';
   const bg=avatarBg(data.fromName||'?');
   const body=buildMessageBody(id,data,isMine,canSee);
-  const canaryBadge=data.isCanary?'<span class="canary-badge">🐦 CANARY</span>':'';
   const pinBtn=S.isOwner?`<button class="btn-pin-msg" onclick="pinMessage('${id}',event)" title="Pin message">📌</button>`:'';
   const replyBtn=`<button class="btn-react btn-reply-msg" onclick="setReplyFrom('${id}')" title="Reply">↩</button>`;
   wrap.innerHTML=`
@@ -637,7 +685,6 @@ function renderMessage(id,data){
       ${!isMine?`<span class="msender">${esc(data.fromName)}</span>`:''}
       <div class="mb">
         ${timerBar}
-        ${canaryBadge}
         ${data.wasScheduled?'<span class="sched-tag-msg">⏰ SCHEDULED</span>':''}
         ${data.oneTimeView&&!isMine?'<span class="otv-badge">👁 ONE-TIME VIEW</span>':''}
         ${data.replyTo?buildReplyQuote(data.replyTo):''}
@@ -669,7 +716,6 @@ function renderMessage(id,data){
     S.timers[id]=setTimeout(()=>db.ref(`rooms/${S.room}/messages/${id}`).remove(),Math.max(0,data.expiresAt-Date.now()));
   }
   if(data.reactions) updateReactions(id,data);
-  if(data.isCanary&&data.from===S.uid) listenCanaryReads(id);
   if(data.kicked) forceLeave('You were removed from this room');
   // Cache for search
   S.msgCache[id]={fromName:data.fromName||'?',content:data.content||null,type:data.type,timestamp:data.timestamp,canSee};
@@ -872,12 +918,13 @@ function buildReceipt(data){
   const others=obj=>Object.entries(obj||{}).filter(([k])=>k!==S.uid);
   const readers=others(data.readBy);
   const deliveries=others(data.delivered);
+  const nameOf=uid=>S.userNames[uid]||uid.slice(0,8)+'…';
   let icon='<span class="rcpt rcpt-sent">✓</span>';
   if(readers.length>0){
-    const tipLines=readers.map(([uid,ts])=>`${uid===S.uid?S.name:uid}: ${fmtFull(ts)}`).join('\n');
+    const tipLines=readers.map(([uid,ts])=>`${nameOf(uid)}: ${fmtFull(ts)}`).join('\n');
     icon=`<span class="rcpt rcpt-read has-tip" data-tip="${esc(tipLines)}">✓✓<span class="rcpt-tip">${esc(tipLines.replace(/\n/g,'&#10;'))}</span></span>`;
   } else if(deliveries.length>0){
-    const tipLines=deliveries.map(([uid,ts])=>`delivered: ${fmtFull(ts)}`).join('\n');
+    const tipLines=deliveries.map(([uid,ts])=>`${nameOf(uid)}: delivered ${fmtFull(ts)}`).join('\n');
     icon=`<span class="rcpt rcpt-dlvr has-tip" data-tip="${esc(tipLines)}">✓✓<span class="rcpt-tip">${esc(tipLines.replace(/\n/g,'&#10;'))}</span></span>`;
   }
   return icon;
@@ -1083,71 +1130,7 @@ async function runSearch(){
   });
 }
 
-// ── CANARY TOKEN ──────────────────────────────────────────────────────────
-async function plantCanary(){
-  if(!S.isOwner){toast('Only owner can plant canary','error');return;}
-  if(S.canaryMsgId){
-    if(!confirm('Replace existing canary token?'))return;
-    await db.ref(`rooms/${S.room}/messages/${S.canaryMsgId}`).remove();
-  }
-  // Get current authorized users
-  const snap=await db.ref(`rooms/${S.room}/users`).once('value');
-  const users=snap.val()||{};
-  const authorized=Object.keys(users); // everyone currently in room is authorized
-  S.canaryAuthorized=new Set(authorized);
 
-  const msgRef=db.ref(`rooms/${S.room}/messages`).push();
-  const msgId=msgRef.key;
-  const enc=await EmojiCipher.encrypt('[CANARY TOKEN — AUTHORIZED READ]',S.room,msgId);
-  await msgRef.set({
-    from:S.uid, fromName:S.name, timestamp:Date.now(),
-    type:'text', content:enc,
-    isCanary:true, authorizedReaders:authorized,
-    readBy:{[S.uid]:Date.now()}, delivered:{[S.uid]:Date.now()},
-    visibleTo:null,
-  });
-  S.canaryMsgId=msgId;
-  $('canary-status').classList.remove('hidden');
-  $('canary-status').textContent='🐦 CANARY ARMED';
-  toast('🐦 Canary token planted','success');
-  listenCanaryReads(msgId);
-}
-
-function listenCanaryReads(msgId){
-  // We watch readBy on the canary message for unexpected UIDs
-  db.ref(`rooms/${S.room}/messages/${msgId}/readBy`).on('value',snap=>{
-    const readBy=snap.val()||{};
-    checkCanaryAlert(msgId,readBy);
-  });
-}
-
-function checkCanaryReads(msgId,data){
-  if(!data.isCanary||!data.readBy)return;
-  checkCanaryAlert(msgId,data.readBy);
-}
-
-function checkCanaryAlert(msgId,readBy){
-  if(!S.isOwner||!S.canaryAuthorized)return;
-  for(const uid of Object.keys(readBy)){
-    if(!S.canaryAuthorized.has(uid)){
-      // Unauthorized reader detected!
-      showCanaryAlert(uid);
-    }
-  }
-}
-
-function showCanaryAlert(uid){
-  const bar=$('canary-status');
-  if(bar){
-    bar.classList.remove('hidden');
-    bar.textContent=`⚠️ CANARY TRIPPED — Unknown UID: ${uid.slice(0,8)}…`;
-    bar.classList.add('canary-alert');
-  }
-  toast(`⚠️ CANARY TRIPPED by ${uid.slice(0,8)}…`,'error');
-  // Flash the UI
-  document.body.classList.add('canary-breach');
-  setTimeout(()=>document.body.classList.remove('canary-breach'),2000);
-}
 
 // ── Download ───────────────────────────────────────────────────────────────
 async function downloadChat(){
@@ -1273,7 +1256,7 @@ function cleanup(){
   Object.values(S.timers).forEach(clearTimeout); S.timers={};
   Object.values(S.schedTimers).forEach(clearTimeout); S.schedTimers={};
   if(S.sessInterval){clearInterval(S.sessInterval);S.sessInterval=null;}
-  S.revealed.clear(); S.msgCache={}; S.pinnedMsgId=null; S.replyTo=null; S.canaryMsgId=null;
+  S.revealed.clear(); S.msgCache={}; S.userNames={}; S.pinnedMsgId=null; S.replyTo=null;
 }
 
 // ── Chat init ──────────────────────────────────────────────────────────────
@@ -1297,7 +1280,6 @@ function initChat(){
   $('btn-reject-call').addEventListener('click',rejectCall);
   $('btn-search').addEventListener('click',openSearch);
   $('btn-close-search').addEventListener('click',closeSearch);
-  $('btn-plant-canary').addEventListener('click',plantCanary);
   $('btn-reply-clear').addEventListener('click',clearReply);
   $('pinned-bar').addEventListener('click',scrollToPinned);
   $('btn-unpin').addEventListener('click',e=>{e.stopPropagation();unpinFromBar();});
