@@ -386,3 +386,250 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
 @media(max-height:500px)and (max-width:900px){.logo-orb{width:50px;height:50px;}.logo-text{font-size:22px;}.logo-sub{display:none;}#screen-landing{padding:10px;gap:10px;}.land-card{padding:10px;}}
 input[type="datetime-local"]{color-scheme:dark;}
 *{scrollbar-width:thin;scrollbar-color:var(--g4) transparent;}
+
+/* ═══════════════════════════════════════════════════════════════
+   VOIDCHAT v7 — NEW FEATURES + UI ANIMATION IMPROVEMENTS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── UI Animation improvements ──────────────────────────────── */
+/* Call panel — smooth slide in/out */
+.call-panel{
+  transition:max-height .3s var(--ease),opacity .25s var(--ease);
+  max-height:60px;overflow:hidden;
+}
+.call-panel.hidden{max-height:0;opacity:0;padding-top:0;padding-bottom:0;pointer-events:none;}
+.incoming-call{transition:max-height .3s var(--ease),opacity .25s var(--ease);max-height:80px;overflow:hidden;}
+.incoming-call.hidden{max-height:0;opacity:0;padding-top:0;padding-bottom:0;pointer-events:none;}
+
+/* Incoming call ring pulse */
+@keyframes ringPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(0,255,65,.35);}
+  50%{box-shadow:0 0 0 14px rgba(0,255,65,0);}
+}
+.incoming-call:not(.hidden){animation:ringPulse 1.2s ease infinite;}
+
+/* Message bubble stagger — new messages pop in with spring */
+@keyframes msgIn{
+  from{opacity:0;transform:translateY(12px) scale(.93)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.msg-wrap{animation:msgIn .3s cubic-bezier(.34,1.45,.64,1);}
+
+/* Reaction chip bounce when added */
+@keyframes rxBounce{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.rx-chip{animation:rxBounce .22s cubic-bezier(.34,1.5,.64,1);}
+
+/* Highlight flash when scrolling to a message */
+@keyframes msgHighlight{
+  0%,100%{background:transparent;}
+  30%{background:rgba(0,255,65,.12);}
+}
+.msg-wrap.msg-highlight .mb{animation:msgHighlight 1.4s ease;}
+.msg-wrap.search-match .mb{outline:1px solid var(--g1);box-shadow:0 0 12px rgba(0,255,65,.2);}
+
+/* More particles on landing */
+.particles span:nth-child(7){left:18%;animation-delay:1.5s;animation-duration:13s}
+.particles span:nth-child(8){left:35%;animation-delay:4s;animation-duration:9s;background:linear-gradient(transparent,var(--p1),transparent)}
+.particles span:nth-child(9){left:55%;animation-delay:6s;animation-duration:11s}
+.particles span:nth-child(10){left:78%;animation-delay:2s;animation-duration:8s;background:linear-gradient(transparent,var(--a1),transparent)}
+.particles span:nth-child(11){left:88%;animation-delay:8.5s;animation-duration:14s}
+.particles span:nth-child(12){left:5%;animation-delay:3s;animation-duration:10s;background:linear-gradient(transparent,var(--c1),transparent)}
+
+/* ── PINNED MESSAGE BAR ───────────────────────────────────────── */
+@keyframes pinSlideIn{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.pinned-bar{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 14px;
+  background:rgba(0,255,65,.04);
+  border-bottom:1px solid rgba(0,255,65,.18);
+  border-left:3px solid var(--g1);
+  cursor:pointer;flex-shrink:0;
+  animation:pinSlideIn .25s var(--ease);
+  transition:background .15s;
+}
+.pinned-bar:hover{background:rgba(0,255,65,.08);}
+.pin-icon{font-size:13px;flex-shrink:0;}
+.pin-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.pin-sender{font-size:8px;letter-spacing:2px;color:var(--g2);font-family:'Orbitron',monospace;}
+.pin-preview{font-size:11px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.btn-unpin{background:none;border:none;color:var(--tx3);cursor:pointer;font-size:12px;padding:2px 5px;flex-shrink:0;transition:color .12s;}
+.btn-unpin:hover{color:var(--r1);}
+
+/* Pin button inside message actions */
+.btn-pin-msg{
+  background:rgba(0,255,65,.04);border:1px solid var(--bd);
+  padding:2px 7px;font-size:11px;cursor:pointer;
+  transition:all .12s;color:var(--tx3);font-family:'Share Tech Mono',monospace;border-radius:2px;
+}
+.btn-pin-msg:hover{background:rgba(0,255,65,.1);color:var(--g1);}
+
+/* ── REPLY THREADING ─────────────────────────────────────────── */
+@keyframes replySlide{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.reply-bar{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,255,65,.04);border:1px solid var(--bd);
+  border-left:2px solid var(--g1);padding:6px 10px;
+  border-radius:2px;animation:replySlide .18s var(--ease);
+}
+.reply-icon{font-size:13px;color:var(--g2);flex-shrink:0;}
+.reply-content{flex:1;min-width:0;}
+.reply-sender{font-size:8px;letter-spacing:2px;color:var(--g2);display:block;font-family:'Orbitron',monospace;}
+.reply-preview{font-size:10px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+
+/* Reply quote inside a message bubble */
+.reply-quote{
+  display:flex;flex-direction:column;gap:2px;
+  padding:5px 8px;margin-bottom:6px;
+  border-left:2px solid var(--g3);
+  background:rgba(0,255,65,.04);
+  border-radius:0 2px 2px 0;
+  cursor:pointer;transition:background .12s;
+}
+.reply-quote:hover{background:rgba(0,255,65,.08);}
+.rq-sender{font-size:8px;letter-spacing:2px;color:var(--g2);}
+.rq-preview{font-size:10px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Reply button in message actions */
+.btn-reply-msg{
+  background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);
+  padding:2px 7px;font-size:11px;cursor:pointer;
+  transition:all .12s;color:rgba(0,212,255,.5);font-family:'Share Tech Mono',monospace;border-radius:2px;
+}
+.btn-reply-msg:hover{background:rgba(0,212,255,.1);color:var(--c1);}
+
+/* ── READ RECEIPT TIMESTAMPS ─────────────────────────────────── */
+.rcpt{position:relative;display:inline-flex;align-items:center;}
+.rcpt.has-tip{cursor:default;}
+.rcpt-tip{
+  display:none;position:absolute;bottom:calc(100% + 6px);right:0;
+  background:rgba(0,10,0,.98);border:1px solid var(--bd2);
+  padding:6px 9px;font-size:9px;color:var(--tx);white-space:pre;
+  border-radius:3px;z-index:9999;min-width:160px;
+  box-shadow:0 4px 20px rgba(0,0,0,.8);
+  pointer-events:none;
+  letter-spacing:.3px;line-height:1.7;
+}
+.rcpt.has-tip:hover .rcpt-tip{display:block;}
+mark{background:rgba(0,255,65,.25);color:var(--g1);border-radius:1px;padding:0 1px;}
+
+/* ── CIPHER VISUALIZER OVERLAY ───────────────────────────────── */
+@keyframes cvFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes cvPulse{0%,100%{opacity:1}50%{opacity:.6}}
+.cipher-viz{
+  position:fixed;inset:0;z-index:99990;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+  animation:cvFadeIn .1s ease;
+}
+.cipher-viz.hidden{display:none;}
+.cv-inner{
+  background:rgba(0,10,0,.97);border:1px solid var(--bd2);
+  border-top:2px solid var(--g1);
+  padding:20px 28px;border-radius:3px;
+  display:flex;flex-direction:column;gap:10px;
+  min-width:240px;max-width:320px;
+  box-shadow:0 0 40px rgba(0,255,65,.15);
+}
+.cv-label{
+  font-family:'Orbitron',monospace;font-size:9px;letter-spacing:4px;
+  color:var(--g2);animation:cvPulse 1s ease infinite;
+}
+#cv-text{
+  font-size:16px;line-height:1.4;min-height:28px;
+  color:var(--g1);word-break:break-all;letter-spacing:1px;
+  font-family:'Share Tech Mono',monospace;
+}
+.cv-bar{height:2px;background:var(--bg3);border-radius:1px;overflow:hidden;}
+#cv-progress{height:100%;background:linear-gradient(90deg,var(--g1),var(--c1));width:0%;transition:width .03s linear;}
+
+/* ── MESSAGE SEARCH OVERLAY ──────────────────────────────────── */
+@keyframes searchFadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.search-overlay{
+  position:fixed;inset:0;z-index:9998;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding-top:clamp(30px,8vh,80px);
+  background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+}
+.search-overlay.hidden{display:none;}
+.search-panel{
+  background:rgba(0,10,0,.98);border:1px solid var(--bd2);
+  border-top:2px solid var(--g1);
+  width:min(520px,94vw);border-radius:3px;
+  box-shadow:0 0 60px rgba(0,0,0,.9),0 0 30px rgba(0,255,65,.08);
+  animation:searchFadeIn .2s var(--ease);
+  display:flex;flex-direction:column;max-height:70vh;overflow:hidden;
+}
+.search-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+.search-title{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--g1);}
+.search-close{background:none;border:none;color:var(--tx2);cursor:pointer;font-size:14px;padding:2px 6px;transition:color .12s;}
+.search-close:hover{color:var(--r1);}
+.search-input-wrap{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+.search-icon-inp{font-size:14px;}
+.search-fi{
+  flex:1;background:transparent;border:none;outline:none;
+  font-family:'Share Tech Mono',monospace;font-size:14px;
+  color:var(--g1);caret-color:var(--g1);
+}
+.search-fi::placeholder{color:var(--tx3);font-size:12px;}
+.search-results{overflow-y:auto;flex:1;padding:8px;}
+.search-results::-webkit-scrollbar{width:2px;}
+.search-results::-webkit-scrollbar-thumb{background:var(--g4);}
+.sr-hint{font-size:10px;color:var(--tx3);text-align:center;padding:20px 0;letter-spacing:1px;}
+.sr-item{
+  display:flex;flex-direction:column;gap:3px;padding:9px 10px;
+  border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s;border-radius:2px;
+}
+.sr-item:hover{background:rgba(0,255,65,.05);}
+.sr-item:last-child{border-bottom:none;}
+.sr-sender{font-size:8px;letter-spacing:2px;color:var(--g2);}
+.sr-time{font-size:8px;color:var(--tx3);margin-left:auto;}
+.sr-item>div:first-child{display:flex;align-items:center;justify-content:space-between;}
+.sr-text{font-size:12px;color:var(--tx);line-height:1.5;}
+
+/* Search button in header */
+.btn-search-hd{
+  background:none;border:1px solid var(--bd);color:var(--tx2);
+  padding:4px 8px;cursor:pointer;font-size:12px;border-radius:2px;
+  transition:all .12s;flex-shrink:0;
+}
+.btn-search-hd:hover{border-color:var(--g1);color:var(--g1);}
+
+/* ── CANARY TOKEN ─────────────────────────────────────────────── */
+.canary-bar{
+  font-size:9px;letter-spacing:2px;color:var(--a1);
+  background:rgba(255,170,0,.05);border-left:2px solid var(--a1)!important;
+  padding:7px 13px!important;
+}
+.canary-bar.canary-alert{
+  color:var(--r1)!important;background:rgba(255,34,68,.08)!important;
+  border-left-color:var(--r1)!important;
+  animation:exp .5s ease infinite;
+}
+.canary-badge{
+  font-size:8px;letter-spacing:1px;padding:1px 7px;display:inline-block;
+  margin-bottom:3px;border-radius:2px;
+  color:var(--a1);background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.2);
+}
+@keyframes breachFlash{0%,100%{background:rgba(0,0,0,0)}50%{background:rgba(255,34,68,.06)}}
+.canary-breach{animation:breachFlash .4s ease 3;}
+
+/* Canary button */
+.btn-canary{background:rgba(255,170,0,.06);border-color:rgba(255,170,0,.2);color:var(--a1);}
+.btn-canary:hover{background:rgba(255,170,0,.12);}
+
+/* Kick button style */
+.kick-btn{
+  background:rgba(255,34,68,.08);border:1px solid rgba(255,34,68,.2);
+  color:var(--r1);padding:3px 8px;cursor:pointer;font-size:9px;
+  border-radius:2px;font-family:'Share Tech Mono',monospace;transition:background .12s;
+}
+.kick-btn:hover{background:rgba(255,34,68,.18);}
+
+/* Existing hidden override with display:none */
+.hidden{display:none!important;}
